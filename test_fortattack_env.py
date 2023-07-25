@@ -26,7 +26,7 @@ if __name__ == '__main__':
             # first agent = ad hoc agent
             
             obs, reward, done, alive_ag, info = env.step(agent_actions)
-            # env.render()
+            env.render()
             
             for agent in range(6):
                 previous_action[agent][0] = previous_action[agent][1]

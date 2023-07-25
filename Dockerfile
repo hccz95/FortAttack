@@ -2,7 +2,7 @@ FROM hccz95/ubuntu:18.04-py38
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        build-essential freeglut3-dev libglib2.0-dev libxrender-dev && \
+        build-essential freeglut3-dev libglib2.0-dev libxrender-dev fontconfig && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # gym==0.21.0 need setuptools==63.2.0
@@ -24,7 +24,8 @@ ENV SUPPRESS_MA_PROMPT=1
 
 # install marllib
 RUN pip install --no-cache-dir setuptools==63.2.0
-RUN pip install --no-cache-dir marllib protobuf==3.20.0 pyglet==1.5.11
 RUN git clone https://github.com/Replicable-MARL/MARLlib.git && \
-    cd MARLlib/marllib/patch && \
+    cd MARLlib && pip install --no-cache-dir -e . && \
+    pip install --no-cache-dir "gym>=0.20.0,<0.22.0" protobuf==3.20.0 pyglet==1.5.11 && \
+    cd marllib/patch && \
     python add_patch.py -y

@@ -376,6 +376,7 @@ class World(object):
         # softmax penetration
         k = self.contact_margin
         penetration = np.logaddexp(0, -(dist - dist_min)/k)*k
+        # TODO: 运行久了这里会报错，valueerror，可以关注dist的数值
         force = self.contact_force * delta_pos / dist * penetration
         force_a = +force if entity_a.movable else None
         force_b = -force if entity_b.movable else None
