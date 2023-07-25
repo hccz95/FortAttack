@@ -2,8 +2,7 @@ import gym
 import gym_fortattack
 from gym import spaces
 import numpy as np
-from multiagent.multi_discrete import MultiDiscrete
-# TODO: from gymnasium.spaces import Discrete, MultiDiscrete
+from gymnasium.spaces import Discrete, MultiDiscrete
 from malib.spaces import Box, MASpace,  MAEnvSpec
 # from pygame import mixer  # Load the popular external library
 import copy
