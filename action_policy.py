@@ -37,9 +37,10 @@ class Policy:
                 ori = current_obs[i][3]
                 if i < 3:
                     A = self.get_tri_pts_arr(x_pos, y_pos, ori) # shoot cone
-                    actions[i] = policies.guard_policy1(current_obs, i, A)
+                    actions[i] = policies.guard_policy(policy_id=1, current_obs=current_obs, agent_name=i, A=A)
                 else: # attacker
-                    actions[i] = policies.attacker_policy1(current_obs, i)                
+                    A = self.get_tri_pts_arr(x_pos, y_pos, ori) # shoot cone
+                    actions[i] = policies.attacker_policy(policy_id=1, current_obs=current_obs, agent_name=i, A=A)
         return actions
 
     def get_other_agents_actions(self, obs):

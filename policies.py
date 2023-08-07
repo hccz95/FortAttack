@@ -285,7 +285,7 @@ def guard_policy3(current_obs, agent_name, A):
     return gua_action
 
 # no shooting no spread out attacker with force fields
-def attacker_policy1(current_obs, agent_name):
+def attacker_policy1(current_obs, agent_name, A=None):
     force_fort = 5
     force_other_walls = 2.8
     force_upper_wall = 0.28
@@ -353,7 +353,7 @@ def attacker_policy1(current_obs, agent_name):
     return att_action
 
 # no shooting but spread out attacker with force fields
-def attacker_policy2(current_obs, agent_name):
+def attacker_policy2(current_obs, agent_name, A=None):
     force_fort = 5
     force_other_walls = 2.8
     force_upper_wall = 0.28
@@ -482,3 +482,20 @@ def attacker_policy3(current_obs, agent_name, A):
             att_action = 0
     return att_action
 
+def guard_policy(policy_id, **config):
+    if policy_id == 1:
+        return guard_policy1(**config)
+    if policy_id == 2:
+        return guard_policy2(**config)
+    if policy_id == 3:
+        return guard_policy3(**config)
+    raise NotImplementedError
+
+def attacker_policy(policy_id, **config):
+    if policy_id == 1:
+        return attacker_policy1(**config)
+    if policy_id == 2:
+        return attacker_policy2(**config)
+    if policy_id == 3:
+        return attacker_policy3(**config)
+    raise NotImplementedError
