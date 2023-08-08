@@ -35,9 +35,7 @@ class Policy:
             if current_obs[i][0] != 1.0:
                 actions[i] = 0 # agent dead - do nothing
             else:
-                x_pos = current_obs[i][1]
-                y_pos = current_obs[i][2]
-                ori = current_obs[i][3]
+                x_pos, y_pos, ori = policies.get_xya_from_obs(current_obs[i])
                 A = self.get_tri_pts_arr(x_pos, y_pos, ori) # shoot cone
                 if i < self.numGuards:
                     actions[i] = policies.guard_policy(policy_id=1, current_obs=current_obs, agent_name=i, A=A, num_guards=self.numGuards)
@@ -51,9 +49,7 @@ class Policy:
             if obs[i][0] != 1.0:
                 actions[i] = 0 # agent dead - do nothing
             else:
-                x_pos = obs[i][1]
-                y_pos = obs[i][2]
-                ori = obs[i][3]
+                x_pos, y_pos, ori = policies.get_xya_from_obs(obs[i])
                 # guards
                 A = self.get_tri_pts_arr(x_pos, y_pos, ori) # shoot cone
                 if i < self.numGuards:

@@ -1,6 +1,13 @@
 import numpy as np
 import math
 
+# parse x_pos, y_pos, orientation (rad) from obs
+def get_xya_from_obs(obs):
+    # obs: alive, x, y, cos(a), sin(a), ...
+    return obs[1], obs[2], math.atan2(obs[4], obs[3])
+    # # obs: alive, x, y, a
+    # return obs[1], obs[2], obs[3]
+
 def attacker_in_range(attacker_obs, A):
         for agent in enumerate(attacker_obs):
             if (agent[1][0]) == 1.0:
@@ -64,9 +71,7 @@ def attacker_in_shoot_circle(partial_obs, x_pos, y_pos, ori):
 
 # spread out and search attackers guard with rules
 def guard_policy1(current_obs, agent_name, A, num_guards):
-    x_pos = current_obs[agent_name][1]
-    y_pos = current_obs[agent_name][2]
-    ori = current_obs[agent_name][3]
+    x_pos, y_pos, ori = get_xya_from_obs(current_obs[agent_name])
     can_shoot = attacker_in_range(current_obs[num_guards:,:], A)
     if can_shoot: # how to handle all the guards shooting the same attacker
         gua_action = 7
@@ -147,9 +152,7 @@ def guard_policy1(current_obs, agent_name, A, num_guards):
 
 # no spread out but search attackers guard with rules
 def guard_policy2(current_obs, agent_name, A, num_guards):
-    x_pos = current_obs[agent_name][1]
-    y_pos = current_obs[agent_name][2]
-    ori = current_obs[agent_name][3]
+    x_pos, y_pos, ori = get_xya_from_obs(current_obs[agent_name])
     can_shoot = attacker_in_range(current_obs[num_guards:,:], A)
     if can_shoot: # how to handle all the guards shooting the same attacker
         gua_action = 7
@@ -194,9 +197,7 @@ def guard_policy3(current_obs, agent_name, A, num_guards):
     force_other_walls = 2.8
     force_upper_wall = 0.28
     force_guard = 4
-    x_pos = current_obs[agent_name][1]
-    y_pos = current_obs[agent_name][2]
-    ori = current_obs[agent_name][3]
+    x_pos, y_pos, ori = get_xya_from_obs(current_obs[agent_name])
     can_shoot = attacker_in_range(current_obs[num_guards:,:], A)
     if can_shoot: # how to handle all the guards shooting the same attacker
         gua_action = 7
@@ -288,9 +289,7 @@ def attacker_policy1(current_obs, agent_name):
     force_fort = 5
     force_other_walls = 2.8
     force_upper_wall = 0.28
-    x_pos = current_obs[agent_name][1]
-    y_pos = current_obs[agent_name][2]
-    ori = current_obs[agent_name][3]
+    x_pos, y_pos, ori = get_xya_from_obs(current_obs[agent_name])
     # force from fort
     angle = get_angle(0, x_pos, 0.8, y_pos)
     fx = force_fort*np.cos(np.radians(angle)) # > 90 negative else positive
@@ -357,8 +356,7 @@ def attacker_policy2(current_obs, agent_name):
     force_other_walls = 2.8
     force_upper_wall = 0.28
     force_oth = 4
-    x_pos = current_obs[agent_name][1]
-    y_pos = current_obs[agent_name][2]
+    x_pos, y_pos, ori = get_xya_from_obs(current_obs[agent_name])
 
     # force from fort
     angle = get_angle(0, x_pos, 0.8, y_pos)
@@ -420,8 +418,7 @@ def attacker_policy3(current_obs, agent_name, A, num_guards):
     force_other_walls = 2.8
     force_upper_wall = 0.28
     force_oth = 4
-    x_pos = current_obs[agent_name][1]
-    y_pos = current_obs[agent_name][2]
+    x_pos, y_pos, ori = get_xya_from_obs(current_obs[agent_name])
 
     can_shoot = attacker_in_range(current_obs[:num_guards,:], A) # actually guard in range
     if can_shoot:

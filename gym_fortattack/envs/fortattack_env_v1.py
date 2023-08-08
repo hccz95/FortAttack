@@ -102,12 +102,12 @@ class FortAttackEnvV1(gym.Env):
         # Attackers get very high reward for reaching the door
         th = self.world.fortDim
         if distToDoor<th:
-            rew1 = 10
+            rew1 = 20
             self.world.atttacker_reached = True
 
         # attacker gets -ve reward for using laser
         if agent.action.shoot:
-            rew2 = -1
+            rew2 = -0.1
 
         # gets positive reward for hitting a guard??
         if agent.hit:
@@ -115,11 +115,11 @@ class FortAttackEnvV1(gym.Env):
 
         # gets negative reward for being hit by a guard
         if agent.wasHit:
-            rew4 = -3
+            rew4 = -1
 
-        # high negative reward if all attackers are dead
-        if self.world.numAliveAttackers == 0:
-            rew5 = -10
+        # # high negative reward if all attackers are dead
+        # if self.world.numAliveAttackers == 0:
+        #     rew5 = -10
 
         rew = rew0+rew1+rew2+rew3+rew4+rew5
         agent.prevDist = distToDoor.copy()
@@ -198,8 +198,47 @@ class FortAttackEnvV1(gym.Env):
             if not entity.boundary:
                 entity_pos.append(entity.state.p_pos - agent.state.p_pos)
 
-        orien = [[agent.state.p_ang]]
-        # [np.array([np.cos(agent.state.p_ang), np.sin(agent.state.p_ang)])]
+        # orien = [[agent.state.p_ang]]
+        orien = [np.array([np.cos(agent.state.p_ang), np.sin(agent.state.p_ang)])]
+
+        other_attacker_alive = []
+        other_attacker_pos = []
+        other_attacker_pvel = []
+        other_attacker_pang = []
+        other_guard_alive = []
+        other_guard_pos = []
+        other_guard_pvel = []
+        other_guard_pang = []
+        for other in world.agents:
+            if other.name == agent.name:
+                continue
+            if other.attacker:
+                other_attacker_alive.append(other.alive)
+                other_attacker_pos.append(other.state.p_pos - agent.state.p_pos)
+                other_attacker_pvel.append(other.state.p_vel)
+                # other_attacker_pang.append([other.state.p_ang])
+                other_attacker_pang.append(np.array([np.cos(other.state.p_ang), np.sin(other.state.p_ang)]))
+            else:
+                other_guard_alive.append(other.alive)
+                other_guard_pos.append(other.state.p_pos - agent.state.p_pos)
+                other_guard_pvel.append(other.state.p_vel)
+                # other_guard_pang.append([other.state.p_ang])
+                other_guard_pang.append(np.array([np.cos(other.state.p_ang), np.sin(other.state.p_ang)]))
+
+        ## self.alive, self.pos, self.orien, self.vel, self.entity_pos +
+        ## teammate_alive, teammate.pos, teammate.orien, teammate.vel +
+        ## enemy_alive, enemy.pos, enemy.orien, enemy.vel
+        if agent.attacker:
+            return (np.concatenate([[agent.alive]]+[agent.state.p_pos] + orien + [agent.state.p_vel] + entity_pos
+                                    + [other_attacker_alive] + other_attacker_pos + other_attacker_pvel + other_attacker_pang # teammates first
+                                    + [other_guard_alive] + other_guard_pos + other_guard_pvel + other_guard_pang             # enemies following
+                                    ))
+        else:
+            return (np.concatenate([[agent.alive]]+[agent.state.p_pos] + orien + [agent.state.p_vel] + entity_pos
+                                    + [other_guard_alive] + other_guard_pos + other_guard_pvel + other_guard_pang
+                                    + [other_attacker_alive] + other_attacker_pos + other_attacker_pvel + other_attacker_pang
+                                    ))
+
 
         # communication of all other agents
         # comm = []
