@@ -36,7 +36,6 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from gym.spaces import Dict as GymDict, Box
 # from ma_gym.envs.checkers import Checkers
 # from ma_gym.envs.switch import Switch
-from gym_fortattack.fortattack import FortAttackGlobalEnv
 from gym_fortattack.fortattack_env_wrapper import FortAttackEnvWrapper
 from marllib import marl
 from marllib.envs.base_env import ENV_REGISTRY
@@ -47,6 +46,8 @@ REGISTRY = {}
 # REGISTRY["Checkers"] = Checkers
 # REGISTRY["Switch2"] = Switch
 REGISTRY["FortAttack"] = FortAttackEnvWrapper
+REGISTRY["FortAttackOffense"] = FortAttackEnvWrapper
+REGISTRY["FortAttackDefense"] = FortAttackEnvWrapper
 
 # provide detailed information of each scenario
 # mostly for policy sharing
@@ -65,7 +66,19 @@ policy_mapping_dict = {
     # },
     "FortAttack": {
         "description": "FortAttack",
-        "team_prefix": ("red_", "blue_"),
+        "team_prefix": ("blue_", "red_", ),
+        "all_agents_one_policy": True,
+        "one_agent_one_policy": True,
+    },
+    "FortAttackOffense": {
+        "description": "FortAttackOffense",
+        "team_prefix": ("red_"),
+        "all_agents_one_policy": True,
+        "one_agent_one_policy": True,
+    },
+    "FortAttackDefense": {
+        "description": "FortAttackDefense",
+        "team_prefix": ("blue_"),
         "all_agents_one_policy": True,
         "one_agent_one_policy": True,
     },
@@ -76,18 +89,24 @@ class RLlibMAGym(MultiAgentEnv):
 
     def __init__(self, env_config):
         map = env_config["map_name"]
-        env_config.pop("map_name", None)
+        # env_config.pop("map_name", None)
 
         self.env = REGISTRY[map](**env_config)
         # assume all agent same action/obs space
         self.action_space = self.env.action_space[0]
         # print('action_space', self.action_space)
         self.observation_space = GymDict({"obs": Box(
-            low=-1000.0,
-            high=1000.0,
+            low=-np.inf,
+            high=np.inf,
             shape=(self.env.observation_space[0].shape[0],),
             dtype=np.dtype("float64"))})
-        self.agents = ["red_0", "red_1", "red_2", "blue_0", "blue_1", "blue_2", ]
+        if map == "FortAttack":
+            self.agents = ['blue_%d' % id for id in range(env_config["numGuards"])] + ['red_%d' % id for id in range(env_config["numAttackers"])]
+        elif map == "FortAttackOffense":
+            self.agents = ['red_%d' % id for id in range(env_config["numAttackers"])]
+        elif map == "FortAttackDefense":
+            self.agents = ['blue_%d' % id for id in range(env_config["numGuards"])]
+
         self.num_agents = len(self.agents)
         env_config["map_name"] = map
         self.env_config = env_config

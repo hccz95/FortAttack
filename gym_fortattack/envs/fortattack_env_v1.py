@@ -5,23 +5,23 @@ from gym_fortattack.core import World, Agent, EntityState
 import numpy as np
 import time
 
-class FortAttackEnvV1(gym.Env):  
-    metadata = {'render.modes': ['human']}   
-    def __init__(self):
+class FortAttackEnvV1(gym.Env):
+    metadata = {'render.modes': ['human']}
+    def __init__(self, numGuards=2, numAttackers=2):
         # environment will have guards(green) and attackers(red)
         # red bullets - can hurt green agents, vice versa
         # single hit - if hit once agent dies
-        self.world = World() 
+        self.world = World()
 
         self.world.fortDim = 0.15   # radius
         self.world.doorLoc = np.array([0,0.8])
-        self.world.numGuards = 3  # initial number of guards, attackers and bullets  
-        self.world.numAttackers = 3
+        self.world.numGuards = numGuards  # initial number of guards, attackers and bullets
+        self.world.numAttackers = numAttackers
         self.world.numBullets = 0
         self.world.numAgents = self.world.numGuards + self.world.numAttackers
         self.world.numAliveGuards, self.world.numAliveAttackers, self.world.numAliveAgents = self.world.numGuards, self.world.numAttackers, self.world.numAgents
         self.world.atttacker_reached = False     ## did any attacker succeed to reach the gate?
-        landmarks = [] # as of now no obstacles, landmarks 
+        landmarks = [] # as of now no obstacles, landmarks
 
         self.world.agents = [Agent() for i in range(self.world.numAgents)]  # first we have the guards and then we have the attackers
         for i, agent in enumerate(self.world.agents):
@@ -31,7 +31,7 @@ class FortAttackEnvV1(gym.Env):
             agent.attacker = False if i < self.world.numGuards else True
             # agent.shootRad = 0.8 if i<self.world.numGuards else 0.6
             agent.accel = 3  ## guards and attackers have same speed and accel
-            agent.max_speed = 3   ## used in integrate_state() inside core.py. slowing down so that bullet can move fast and still it doesn't seem that the bullet is skipping steps 
+            agent.max_speed = 3   ## used in integrate_state() inside core.py. slowing down so that bullet can move fast and still it doesn't seem that the bullet is skipping steps
             agent.max_rot = 0.17 ## approx 10 degree (or 0.1 degress angel?)
 
         self.viewers = [None]
@@ -42,7 +42,7 @@ class FortAttackEnvV1(gym.Env):
         self.world.vizDead = False         # whether to visualize the dead agents
         self.world.vizAttn = True        # whether to visualize attentions
         self.world.gameResult = np.array([0,0,0]) #  [all attackers dead, max time steps, attacker reached fort]
-        self.reset_world()        
+        self.reset_world()
 
     def reset_world(self):
         # light green for guards and light red for attackers
@@ -57,7 +57,7 @@ class FortAttackEnvV1(gym.Env):
             agent.color = np.array([0.0, 1.0, 0.0]) if not agent.attacker else np.array([1.0, 0.0, 0.0])
             agent.state.p_vel = np.zeros(self.world.dim_p-1)    ##
             agent.state.c = np.zeros(self.world.dim_c)
-            agent.state.p_ang = np.pi/2 if agent.attacker else 3*np.pi/2 
+            agent.state.p_ang = np.pi/2 if agent.attacker else 3*np.pi/2
 
             xMin, xMax, yMin, yMax = self.world.wall_pos
             # now we will set the initial positions
@@ -73,11 +73,11 @@ class FortAttackEnvV1(gym.Env):
             agent.numWasHit = 0
             agent.hit = False        # in last time step
             agent.wasHit = False
-        
+
         # random properties for landmarks
         for i, landmark in enumerate(self.world.landmarks):
             landmark.color = np.array([0.25, 0.25, 0.25])
-            
+
         for i, landmark in enumerate(self.world.landmarks):
             if not landmark.boundary:
                 landmark.state.p_pos = np.random.uniform(-0.9, +0.9, self.world.dim_p)
@@ -92,7 +92,7 @@ class FortAttackEnvV1(gym.Env):
 
     def attacker_reward(self, agent):
         rew0, rew1, rew2, rew3, rew4, rew5 = 0,0,0,0,0,0
-        
+
         # dead agents are not getting reward just when they are dead
         # # Attackers get reward for being close to the door
         distToDoor = np.sqrt(np.sum(np.square(agent.state.p_pos-self.world.doorLoc)))
@@ -129,7 +129,7 @@ class FortAttackEnvV1(gym.Env):
     def guard_reward(self, agent):
         # guards get reward for keeping all attacker away
         rew0, rew1, rew2, rew3, rew4, rew5, rew6, rew7, rew8 = 0,0,0,0,0,0,0,0,0
-        
+
         # # high negative reward for leaving the fort
         selfDistToDoor = np.sqrt(np.sum(np.square(agent.state.p_pos-self.world.doorLoc)))
         # if selfDistToDoor>0.3:
@@ -197,16 +197,16 @@ class FortAttackEnvV1(gym.Env):
         for entity in world.landmarks:
             if not entity.boundary:
                 entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-        
+
         orien = [[agent.state.p_ang]]
         # [np.array([np.cos(agent.state.p_ang), np.sin(agent.state.p_ang)])]
-        
+
         # communication of all other agents
         # comm = []
         # other_pos = []
         # other_vel = []
         # other_orien = []
-        # other_shoot = [] 
+        # other_shoot = []
         # for other in world.agents:
         #     if other is agent: continue
         #     comm.append(other.state.c)
@@ -228,12 +228,12 @@ class FortAttackEnvV1(gym.Env):
         # print(len(other_orien), other_shoot.shape)
         # print(np.concatenate([agent.state.p_pos] + [agent.state.p_vel] + orien + entity_pos + other_pos + other_vel + other_orien + other_shoot))
         # [[int(agent.alive)]]+
-        
+
         # print(np.shape(np.concatenate([[int(agent.alive)]]+[agent.state.p_pos] + [agent.state.p_vel] + orien + entity_pos + other_pos + other_vel + other_orien + other_shoot)))
-    
+
         # return np.concatenate([[int(agent.alive)]]+[agent.state.p_pos] + [agent.state.p_vel] + orien + entity_pos + other_pos + other_vel + other_orien + other_shoot)
-        
+
         ## self.alive, self.pos, self.orien, self.vel
         return(np.concatenate([[agent.alive]]+[agent.state.p_pos] + orien + [agent.state.p_vel] +entity_pos))
 
-    
+

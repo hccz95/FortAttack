@@ -1,7 +1,5 @@
 import numpy as np
 import math
-num_guards = 3
-num_attacker = 3
 
 def attacker_in_range(attacker_obs, A):
         for agent in enumerate(attacker_obs):
@@ -29,14 +27,14 @@ def get_others_distance(partial_obs, x_pos, y_pos):
             dist_to_agent = np.sqrt(np.sum(np.square(att_pos-agent_pos)))
             distance_list.append(dist_to_agent)
         else:
-            distance_list.append(10) # very high distance for dead 
+            distance_list.append(10) # very high distance for dead
     return distance_list
 
 def get_nearest_agent_coordinates(partial_obs, x_pos, y_pos):
     other_distance = get_others_distance(partial_obs, x_pos, y_pos)
     min_index = other_distance.index(min(other_distance))
     return(partial_obs[min_index][1], partial_obs[min_index][2], min(other_distance))
-    
+
 def get_angle(x_oth, x_pos, y_oth, y_pos):
     deltaX = x_oth - x_pos
     deltaY = y_oth - y_pos
@@ -65,7 +63,7 @@ def attacker_in_shoot_circle(partial_obs, x_pos, y_pos, ori):
     return False, None
 
 # spread out and search attackers guard with rules
-def guard_policy1(current_obs, agent_name, A):
+def guard_policy1(current_obs, agent_name, A, num_guards):
     x_pos = current_obs[agent_name][1]
     y_pos = current_obs[agent_name][2]
     ori = current_obs[agent_name][3]
@@ -79,8 +77,8 @@ def guard_policy1(current_obs, agent_name, A):
             gua_action = action
         else:
             # if near the walls/fort move away/towards
-            if x_pos < -0.9: # too near to the left wall 
-                # need to face that side to move? 
+            if x_pos < -0.9: # too near to the left wall
+                # need to face that side to move?
                 # currently can move backwards
                 gua_action = 1
             elif x_pos > 0.9: # too near to the right wall
@@ -106,7 +104,8 @@ def guard_policy1(current_obs, agent_name, A):
                 else:
                     # if too close to other guards they can move away
                     guards_obs = current_obs[:num_guards,:]
-                    guards_obs = np.delete(guards_obs, agent_name, axis=0)
+                    if num_guards > 1:
+                        guards_obs = np.delete(guards_obs, agent_name, axis=0)
                     x_gua, y_gua, dist = get_nearest_agent_coordinates(guards_obs, x_pos, y_pos)
                     # lets spread out only in x direction for now
                     if (abs(x_gua-x_pos) > 0.5):
@@ -147,7 +146,7 @@ def guard_policy1(current_obs, agent_name, A):
     return gua_action
 
 # no spread out but search attackers guard with rules
-def guard_policy2(current_obs, agent_name, A):
+def guard_policy2(current_obs, agent_name, A, num_guards):
     x_pos = current_obs[agent_name][1]
     y_pos = current_obs[agent_name][2]
     ori = current_obs[agent_name][3]
@@ -161,8 +160,8 @@ def guard_policy2(current_obs, agent_name, A):
             gua_action = action
         else:
             # if near the walls/fort move away/towards
-            if x_pos < -0.9: # too near to the left wall 
-                # need to face that side to move? 
+            if x_pos < -0.9: # too near to the left wall
+                # need to face that side to move?
                 # currently can move backwards
                 gua_action = 1
             elif x_pos > 0.9: # too near to the right wall
@@ -190,7 +189,7 @@ def guard_policy2(current_obs, agent_name, A):
     return gua_action
 
 # spread out search attackers guard with force fields
-def guard_policy3(current_obs, agent_name, A):
+def guard_policy3(current_obs, agent_name, A, num_guards):
     force_fort = 4
     force_other_walls = 2.8
     force_upper_wall = 0.28
@@ -227,7 +226,7 @@ def guard_policy3(current_obs, agent_name, A):
             else:
                 fyw = 0
 
-            # force from guards         
+            # force from guards
             guards_obs = current_obs[:num_guards,:]
             guards_obs = np.delete(guards_obs, agent_name, axis=0)
             x_gua, y_gua, dist = get_nearest_agent_coordinates(guards_obs, x_pos, y_pos)
@@ -285,7 +284,7 @@ def guard_policy3(current_obs, agent_name, A):
     return gua_action
 
 # no shooting no spread out attacker with force fields
-def attacker_policy1(current_obs, agent_name, A=None):
+def attacker_policy1(current_obs, agent_name):
     force_fort = 5
     force_other_walls = 2.8
     force_upper_wall = 0.28
@@ -296,7 +295,7 @@ def attacker_policy1(current_obs, agent_name, A=None):
     angle = get_angle(0, x_pos, 0.8, y_pos)
     fx = force_fort*np.cos(np.radians(angle)) # > 90 negative else positive
     fy = force_fort*np.sin(np.radians(angle))
-    
+
     # force from walls
     if (x_pos >= 0.8):
         fxw = -(force_other_walls - (1.0 - abs(x_pos))*14)
@@ -327,7 +326,7 @@ def attacker_policy1(current_obs, agent_name, A=None):
             att_action = 4
     else:
         att_action = 0
-    
+
     # ori_degree = math.degrees(ori) if math.degrees(ori) < 360 else math.degrees(ori)-360
     # if att_action == 1 and (ori_degree < 330 or ori_degree > 30):
     #     if ori_degree < 180:
@@ -349,11 +348,11 @@ def attacker_policy1(current_obs, agent_name, A=None):
     #         att_action = 5
     #     else:
     #         att_action = 6
-            
+
     return att_action
 
 # no shooting but spread out attacker with force fields
-def attacker_policy2(current_obs, agent_name, A=None):
+def attacker_policy2(current_obs, agent_name):
     force_fort = 5
     force_other_walls = 2.8
     force_upper_wall = 0.28
@@ -380,7 +379,7 @@ def attacker_policy2(current_obs, agent_name, A=None):
     else:
         fyw = 0
 
-    # force from other agents (all)         
+    # force from other agents (all)
     obs = np.delete(current_obs, agent_name, axis=0)
     x_oth, y_oth, dist = get_nearest_agent_coordinates(obs, x_pos, y_pos)
     angle_age = get_angle(x_oth, x_pos, y_oth, y_pos)
@@ -416,7 +415,7 @@ def attacker_policy2(current_obs, agent_name, A=None):
     return att_action
 
 # shooting and spread out attacker with force fields
-def attacker_policy3(current_obs, agent_name, A):
+def attacker_policy3(current_obs, agent_name, A, num_guards):
     force_fort = 5
     force_other_walls = 2.8
     force_upper_wall = 0.28
@@ -447,7 +446,7 @@ def attacker_policy3(current_obs, agent_name, A):
         else:
             fyw = 0
 
-        # force from other agents (all)         
+        # force from other agents (all)
         obs = np.delete(current_obs, agent_name, axis=0)
         x_oth, y_oth, dist = get_nearest_agent_coordinates(obs, x_pos, y_pos)
         angle_age = get_angle(x_oth, x_pos, y_oth, y_pos)
@@ -484,18 +483,18 @@ def attacker_policy3(current_obs, agent_name, A):
 
 def guard_policy(policy_id, **config):
     if policy_id == 1:
-        return guard_policy1(**config)
+        return guard_policy1(config["current_obs"], config["agent_name"], config["A"], config["num_guards"])
     if policy_id == 2:
-        return guard_policy2(**config)
+        return guard_policy2(config["current_obs"], config["agent_name"], config["A"], config["num_guards"])
     if policy_id == 3:
-        return guard_policy3(**config)
+        return guard_policy3(config["current_obs"], config["agent_name"], config["A"], config["num_guards"])
     raise NotImplementedError
 
 def attacker_policy(policy_id, **config):
     if policy_id == 1:
-        return attacker_policy1(**config)
+        return attacker_policy1(config["current_obs"], config["agent_name"])
     if policy_id == 2:
-        return attacker_policy2(**config)
+        return attacker_policy2(config["current_obs"], config["agent_name"])
     if policy_id == 3:
-        return attacker_policy3(**config)
+        return attacker_policy3(config["current_obs"], config["agent_name"], config["A"], config["num_guards"])
     raise NotImplementedError

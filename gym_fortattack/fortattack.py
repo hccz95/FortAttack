@@ -8,8 +8,8 @@ from malib.spaces import Box, MASpace,  MAEnvSpec
 import copy
 import cv2
 
-def make_fortattack_env(num_steps, benchmark=False):
-    scenario = gym.make('fortattack-v1')
+def make_fortattack_env(num_steps, benchmark=False, numGuards=2, numAttackers=2):
+    scenario = gym.make('fortattack-v1', numGuards=numGuards, numAttackers=numAttackers)
     world = scenario.world
     world.max_time_steps = num_steps
     env = FortAttackGlobalEnv(world, scenario.reset_world, scenario.reward, scenario.observation)
@@ -81,8 +81,8 @@ class FortAttackGlobalEnv(gym.Env):
             self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(obs_dim,), dtype=np.float32))
             agent.action.c = np.zeros(self.world.dim_c)
 
-        # action has 8 values: 
-        # nothing, +forcex, -forcex, +forcey, -forcey, +rot, -rot, shoot 
+        # action has 8 values:
+        # nothing, +forcex, -forcex, +forcey, -forcey, +rot, -rot, shoot
         self.action_spaces = MASpace(tuple(Box(low=0., high=1., shape=((world.dim_p) * 2 + 2,)) for _ in range(self.agent_num)))  ##
         self.observation_spaces = MASpace(tuple(Box(low=-np.inf, high=+np.inf, shape=obs_shape) for obs_shape in obs_shapes))
 
@@ -113,15 +113,15 @@ class FortAttackGlobalEnv(gym.Env):
         for i, agent in enumerate(self.agents):
             action = action_n[i]
             self._set_action(action, agent, self.action_space[i]) # sets the actions in the agent object
-        
+
         # advance world state
         self.world.step()
-        
+
         # record observation for each agent
         for agent in self.agents: ##
             obs_n.append(self._get_obs(agent))
             reward_n.append(self._get_reward(agent))
-            alive_g.append([self.world.numAliveAttackers, self.world.numAliveGuards]) 
+            alive_g.append([self.world.numAliveAttackers, self.world.numAliveGuards])
             info_n['n'].append(self._get_info(agent))
 
         ## implement single done reflecting game state
@@ -130,7 +130,7 @@ class FortAttackGlobalEnv(gym.Env):
         if self.shared_reward:
             reward_n = [reward] * self.n
         self.world.time_step += 1
-        obs_n = np.array(obs_n)      
+        obs_n = np.array(obs_n)
         alive_g = np.array(alive_g)
         return obs_n, reward_n, done, alive_g, info_n
 
@@ -175,8 +175,8 @@ class FortAttackGlobalEnv(gym.Env):
         if self.world.numAliveAttackers == 0:
             print('all attackers dead')
             self.world.gameResult[0] = 1
-            return(True)    
-        
+            return(True)
+
         # done if max number of time steps over, guards win
         elif self.world.time_step == self.world.max_time_steps-1:
             print('max number of time steps')
@@ -225,7 +225,7 @@ class FortAttackGlobalEnv(gym.Env):
                 agent.action.shoot = True if action[0] == 7 else False
 
             else:
-                if self.force_discrete_action:       
+                if self.force_discrete_action:
                     d = np.argmax(action[0])
                     action[0][:] = 0.0
                     action[0][d] = 1.0
@@ -233,23 +233,23 @@ class FortAttackGlobalEnv(gym.Env):
                     # print('action', action)
                     agent.action.u[0] += action[0][1] - action[0][2]    ## each is 0 to 1, so total is -1 to 1
                     agent.action.u[1] += action[0][3] - action[0][4]    ## same as above
-                    
+
                     ## simple shooting action
                     agent.action.shoot = True if action[0][6]>0.5 else False   # a number greater than 0.5 would mean shoot
 
                     ## simple rotation model
                     agent.action.u[2] = 2*(action[0][5]-0.5)*agent.max_rot
-            
+
                 else:
                     agent.action.u = action[0]
             sensitivity = 5.0   # default if no value specified for accel
             if agent.accel is not None:
                 sensitivity = agent.accel
             agent.action.u[:2] *= sensitivity
-            
+
             ## remove used actions
             action = action[1:]
-        
+
 
         if not agent.silent:
             # communication action
@@ -259,7 +259,7 @@ class FortAttackGlobalEnv(gym.Env):
             else:
                 agent.action.c = action[0]
             action = action[1:]
-        
+
         # make sure we used all elements of action
         assert len(action) == 0
 
@@ -272,7 +272,7 @@ class FortAttackGlobalEnv(gym.Env):
         temp = copy.deepcopy(frame[:,:,0])
         frame[:,:,0] = frame[:,:,2]
         frame[:,:,2] = temp
-        # frame = cv2.resize(frame, (704, 576)) 
+        # frame = cv2.resize(frame, (704, 576))
         return frame
 
     # saving frames as images
@@ -280,12 +280,12 @@ class FortAttackGlobalEnv(gym.Env):
         frame = self.render(attn_list, mode='rgb_array')[0]
         frame = self.rgb2bgr(frame)
         cv2.imwrite(path, frame)
-    
+
     def rgb2bgr(self, frame):
         temp = copy.deepcopy(frame[:,:,0])
         frame[:,:,0] = frame[:,:,2]
         frame[:,:,2] = temp
-        # frame = cv2.resize(frame, (704, 576)) 
+        # frame = cv2.resize(frame, (704, 576))
         return frame
 
     def recordFrame(self):
@@ -295,14 +295,14 @@ class FortAttackGlobalEnv(gym.Env):
         else:
             frame = self.rgb2bgr(frame)
             self.video.write(frame)
-    
+
     # saving frames as images
     def saveFrame(self, path):
         frame = self.render(mode='rgb_array')[0]
         frame = self.rgb2bgr(frame)
         cv2.imwrite(path, frame)
 
-    
+
     def endVideo(self):
         if self.video_format=='gif':
             self.video.close()
@@ -400,7 +400,7 @@ class FortAttackGlobalEnv(gym.Env):
                 xform = rendering.Transform()
                 geom.add_attr(xform)
                 xform.set_translation(*entity.state.p_pos)
-                
+
                 if 'agent' in entity.name:
                     geom.set_color(*entity.color, alpha=1)
                     head = rendering.make_circle(0.5*entity.size)
@@ -432,7 +432,7 @@ class FortAttackGlobalEnv(gym.Env):
 
                 self.render_geoms.append(geom)
                 self.render_geoms_xform.append(xform)
- 
+
             # add grey strips, corners of visualization window
             corPtsArr = [np.array([[xMin,yMax],
                                 [xMax,yMax],
@@ -448,7 +448,7 @@ class FortAttackGlobalEnv(gym.Env):
                 xform = rendering.Transform()
                 geom.add_attr(xform)
                 self.render_geoms.append(geom)
-                self.render_geoms_xform.append(xform)  
+                self.render_geoms_xform.append(xform)
 
             # add geoms to viewer ## viewer is object of class Viewer defined in rendering.py file inside gym_fortattack
             for viewer in self.viewers:
