@@ -136,9 +136,13 @@ class RLlibMAGym(MultiAgentEnv):
         self.env.close()
 
     def render(self, mode=None):
-        self.env.render()
-        time.sleep(0.05)
-        return True
+        if mode == 'human':
+            self.env.render()
+            time.sleep(0.05)
+            return True
+        else:
+            frame = self.env.render(mode)
+            return frame[0]
 
     def get_env_info(self):
         env_info = {
