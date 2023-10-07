@@ -1,9 +1,10 @@
 import numpy as np
-import math
 import policies
 
-class Policy:
-    def __init__(self, numGuards=2, numAttackers=2):
+ACTION_DIM = 8
+
+class RulePolicy:
+    def __init__(self, numGuards=2, numAttackers=2, agent_id=0, policy_id=1):
         self.wall_pos = [-1,1,-0.8,0.8]
         self.fortDim = 0.15   # radius
         self.doorLoc = np.array([0,0.8])
@@ -17,6 +18,14 @@ class Policy:
         self.numAgents = numGuards + numAttackers
         self.numGuards = numGuards
         self.numAttackers = numAttackers
+        self.agent_id = agent_id
+        self.policy_id = policy_id
+
+    def get_action(self, obs, obs_n):
+        if self.policy_id == 'random':
+            return np.random.randint(0, ACTION_DIM)
+        else:
+            return self.get_single_action(obs, obs_n)
 
     def get_tri_pts_arr(self, x_pos, y_pos, ori):
         ang = ori
@@ -29,31 +38,24 @@ class Policy:
                       [     1,      1,      1]])
         return(A)
 
-    def get_actions(self, current_obs):
-        actions = np.zeros(self.numAgents, dtype=int)
-        for i in range(len(current_obs)):
-            if current_obs[i][0] != 1.0:
-                actions[i] = 0 # agent dead - do nothing
-            else:
-                x_pos, y_pos, ori = policies.get_xya_from_obs(current_obs[i])
-                A = self.get_tri_pts_arr(x_pos, y_pos, ori) # shoot cone
-                if i < self.numGuards:
-                    actions[i] = policies.guard_policy(policy_id=1, current_obs=current_obs, agent_name=i, A=A, num_guards=self.numGuards)
-                else: # attacker
-                    actions[i] = policies.attacker_policy(policy_id=1, current_obs=current_obs, agent_name=i, A=A, num_guards=self.numGuards)
-        return actions
+    def get_single_action(self, single_obs, current_obs):
+        if single_obs[0] != 1.0:
+            action = 0 # agent dead - do nothing
+        else:
+            x_pos, y_pos, ori = policies.get_xya_from_obs(single_obs)
+            A = self.get_tri_pts_arr(x_pos, y_pos, ori) # shoot cone
+            if self.agent_id < self.numGuards:
+                action = policies.guard_policy(policy_id=self.policy_id, current_obs=current_obs, agent_name=self.agent_id, A=A, num_guards=self.numGuards)
+            else: # attacker
+                action = policies.attacker_policy(policy_id=self.policy_id, current_obs=current_obs, agent_name=self.agent_id, A=A, num_guards=self.numGuards)
+        return action
 
-    def get_other_agents_actions(self, obs):
-        actions = np.zeros(self.numAgents, dtype=int)
-        for i in range(len(obs)):
-            if obs[i][0] != 1.0:
-                actions[i] = 0 # agent dead - do nothing
-            else:
-                x_pos, y_pos, ori = policies.get_xya_from_obs(obs[i])
-                # guards
-                A = self.get_tri_pts_arr(x_pos, y_pos, ori) # shoot cone
-                if i < self.numGuards:
-                    actions[i] = policies.guard_policy(policy_id=1, current_obs=obs, agent_name=i, A=A, num_guards=self.numGuards)
-                else: # attacker
-                    actions[i] = policies.attacker_policy(policy_id=1, current_obs=obs, agent_name=i, A=A, num_guards=self.numGuards)
-        return actions
+    def set_policy_id(self, policy_id):
+        self.policy_id = policy_id
+
+
+def generate_policy(policy_type='rule', **kwargs):
+    if policy_type == 'rule':
+        return RulePolicy(**kwargs)     # numGuards=2, numAttackers=2, agent_id=0, policy_id=1
+    else:
+        raise NotImplementedError

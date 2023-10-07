@@ -7,7 +7,8 @@ import action_policy
 
 class FortAttackEnvWrapper(gym.Env):
     metadata = {'render.modes': ['human']}
-    def __init__(self, max_steps=100, numGuards=2, numAttackers=2, map_name="FortAttackOffense"):
+    # TODO: 后续要加一个env_arg，用来设置每个agent的action_selector，yaml文件里支持list和dict
+    def __init__(self, max_steps=100, numGuards=2, numAttackers=2, map_name="FortAttackOffense", **kwargs):
         self.env = make_fortattack_env(num_steps=max_steps, numGuards=numGuards, numAttackers=numAttackers)
 
         self.action_space = self.env.action_space
@@ -16,36 +17,44 @@ class FortAttackEnvWrapper(gym.Env):
         self.numGuards = numGuards
         self.numAttackers = numAttackers
         self.map_name = map_name
-        self.act = action_policy.Policy(numGuards, numAttackers)
+
+        if map_name == "FortAttackOffense":
+            self.mask = [0] * numGuards + [1] * numAttackers
+        elif map_name == "FortAttackDefense":
+            self.mask = [1] * numGuards + [0] * numAttackers
+        elif map_name == "FortAttack":
+            self.mask = [1] * numGuards + [1] * numAttackers
+        elif map_name == "FortAttackAdhoc":
+            self.mask = [0] * numGuards + [1] + [0] * (numAttackers - 1)
+        elif map_name == "FortAttackAuto":
+            self.mask = [0] * numGuards + [0] * numAttackers
+        else:
+            raise NotImplementedError
+
+        self.trainable_ids = [i for i, v in enumerate(self.mask) if v == 1]
+        self.action_selectors = [action_policy.RulePolicy(numGuards, numAttackers, agent_id) # 默认使用1号策略, policy_id=1
+                                    for agent_id in range(numGuards+numAttackers)]
 
     def reset(self):
         self._o = self.env.reset()
-        return self._o
+        return self._o[self.trainable_ids]
 
     def step(self, action_n):
-        action_all = self.act.get_actions(self._o)
-        if self.map_name == "FortAttackOffense":
-            assert len(action_n) == self.numAttackers
-            action_all[self.numGuards:] = action_n
-        elif self.map_name == "FortAttackDefense":
-            assert len(action_n) == self.numGuards
-            action_all[:self.numGuards] = action_n
-        else:
-            action_all = action_n
+        action_all = np.zeros((len(self.mask)), dtype=int)
+        for i, act in enumerate(self.action_selectors):
+            if self.mask[i] == 0:
+                action_all[i] = act.get_action(self._o[i], self._o)
+        action_all[self.trainable_ids] = action_n
+
         o, r, d, alive_g, info = self.env.step(action_all)
-
         self._o = o
-        d = [d] * len(action_n)
-        # info["alive_g"] = alive_g
 
-        # TODO: 这里返回的info必须是{}，否则报错
+        o_n = o[self.trainable_ids]
+        r_n = np.array(r)[self.trainable_ids]
+        d_n = [d] * max(1, len(action_n))
+        # info["alive_g"] = alive_g  # TODO: 这里返回的info必须是{}，否则报错
 
-        if self.map_name == "FortAttackOffense":
-            return o[self.numGuards:], r[self.numGuards:], d, {}
-        elif self.map_name == "FortAttackDefense":
-            return o[:self.numGuards], r[:self.numGuards], d, {}
-        else:
-            return o, r, d, {}
+        return o_n, r_n, d_n, {}
 
     def render(self, mode='human'):
         return self.env.render(mode)
@@ -54,7 +63,7 @@ class FortAttackEnvWrapper(gym.Env):
         self.seed = seed
 
 if __name__ == '__main__':
-    env = FortAttackEnvWrapper()
+    env = FortAttackEnvWrapper(numGuards=3, numAttackers=3, map_name="FortAttack")
     while True:
         s = env.reset()
         r_red = 0
@@ -64,8 +73,8 @@ if __name__ == '__main__':
             s_, r_n, d, info = env.step(a_n)
             # env.render()
             # print(s_, r_n, d, )
-            r_red += sum(r_n[:3])
-            r_blue += sum(r_n[3:])
+            r_blue += sum(r_n[:3])  # guard reward
+            r_red += sum(r_n[3:])   # attacker reward
             if all(d):
                 print(r_red, r_blue)
                 break
